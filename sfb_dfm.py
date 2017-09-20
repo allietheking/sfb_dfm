@@ -36,12 +36,13 @@ DAY=np.timedelta64(86400,'s') # useful for adjusting times
 if 0: # nice short setup for testing:
     run_name="test_20120801_p16" 
     run_start=np.datetime64('2012-08-01')
-    run_stop=np.datetime64('2012-08-02')
+    run_stop=np.datetime64('2012-08-05')
 if 1: # wy2013 with spinup
-    run_name="wy2013" 
+    # suffix:
+    #   a=>lowpassed the tides
+    run_name="wy2013a" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2013-10-01')
-
 
 
 # debugging - set all volumetric flow rates to 1m3/s.
