@@ -13,6 +13,7 @@ import shutil
 import numpy as np
 import logging
 import xarray as xr
+import subprocess
 import six
 
 from stompy import utils
@@ -37,16 +38,27 @@ if 0: # nice short setup for testing:
     run_name="test_20120801_p16" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2012-08-05')
-if 1: # wy2013 with spinup
+if 0: # wy2013 with spinup
     # suffix:
     #   a=>lowpassed the tides
     run_name="wy2013a" 
+    run_start=np.datetime64('2012-08-01')
+    run_stop=np.datetime64('2013-10-01')
+if 1: # hopefully fixing Delta inflows
+    # suffix:
+    run_name="wy2013b" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2013-10-01')
 
 
 # debugging - set all volumetric flow rates to 1m3/s.
 ALL_FLOWS_UNIT=False
+
+nprocs=16
+ALL_FLOWS_UNIT=False # for debug, set all volumetric flow rates to 1m3/s if True
+
+dfm_bin_dir="/opt/software/delft/dfm/r52184-opt/bin"
+
 
 ## --------------------------------------------------
 
@@ -139,7 +151,9 @@ sfb_dfm_utils.add_delta_inflow(run_base_dir,
                                grid=grid,dredge_depth=dredge_depth,
                                old_bc_fn=old_bc_fn,
                                all_flows_unit=ALL_FLOWS_UNIT)
-## 
+##
+
+#raise Exception("Depending on success with LSB run, should add factor=0.901 here")
 sfb_dfm_utils.add_ocean(run_base_dir,
                         run_start,run_stop,ref_date,
                         static_dir=abs_static_dir,
@@ -215,6 +229,28 @@ if 1:
     if run_name.startswith('short'):
         mdu['output','MapInterval'] = 3600
     
-## 
-mdu.write(os.path.join(run_base_dir,run_name+".mdu"))
+##
+mdu_fn=os.path.join(run_base_dir,run_name+".mdu")
+mdu.write(mdu_fn)
 
+
+# As of r52184, explicitly built with metis support, partitioning can be done automatically
+# from here.
+
+cmd="%s/mpiexec -n %d %s/dflowfm --partition:ndomains=%d %s"%(dfm_bin_dir,nprocs,dfm_bin_dir,nprocs,
+                                                              mdu['geometry','NetFile'])
+pwd=os.getcwd()
+try:
+    os.chdir(run_base_dir)
+    res=subprocess.call(cmd,shell=True)
+finally:
+    os.chdir(pwd)
+
+
+# similar, but for the mdu:
+cmd="%s/generate_parallel_mdu.sh %s %d 6"%(dfm_bin_dir,os.path.basename(mdu_fn),nprocs)
+try:
+    os.chdir(run_base_dir)
+    res=subprocess.call(cmd,shell=True)
+finally:
+    os.chdir(pwd)
