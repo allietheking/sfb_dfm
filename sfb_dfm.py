@@ -7,13 +7,14 @@ model grid, with some areas deepened (LSB bathy), trimmed (Coyote Creek)
 and dredge (see dredge_grid.py in this directory)
 """
 import os
+import glob
 import pdb
 import io
 import shutil
+import subprocess
 import numpy as np
 import logging
 import xarray as xr
-import subprocess
 import six
 
 from stompy import utils
@@ -44,21 +45,21 @@ if 0: # wy2013 with spinup
     run_name="wy2013a" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2013-10-01')
-if 1: # hopefully fixing Delta inflows
+if 0: # hopefully fixing Delta inflows
     # suffix:
     run_name="wy2013b" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2013-10-01')
-
-
-# debugging - set all volumetric flow rates to 1m3/s.
-ALL_FLOWS_UNIT=False
+if 1: # try attenuating/lagging ocean boundary condition
+    # suffix:
+    run_name="wy2013c" 
+    run_start=np.datetime64('2012-08-01')
+    run_stop=np.datetime64('2013-10-01')
 
 nprocs=16
 ALL_FLOWS_UNIT=False # for debug, set all volumetric flow rates to 1m3/s if True
 
 dfm_bin_dir="/opt/software/delft/dfm/r52184-opt/bin"
-
 
 ## --------------------------------------------------
 
@@ -100,18 +101,32 @@ for fn in [old_bc_fn]:
 
 ##
 
+## --------------------------------------------------------------------------------
+# Edits to the template mdu:
+# 
+
+mdu=dio.MDUFile('template.mdu')
+
+if 1: # set dates
+    # RefDate can only be specified to day precision
+    mdu['time','RefDate'] = utils.to_datetime(ref_date).strftime('%Y%m%d')
+    mdu['time','Tunit'] = 'M' # minutes.  kind of weird, but stick with what was used already
+    mdu['time','TStart'] = 0
+    mdu['time','TStop'] = int( (run_stop - run_start) / np.timedelta64(1,'m') )
+
+mdu['geometry','LandBoundaryFile'] = os.path.join(rel_static_dir,"deltabay.ldb")
+
+mdu['geometry','Kmx']=10 # 10 layers
+
+# update location of the boundary conditions
+# this has the source/sinks which cannot be written in the new style file
+mdu['external forcing','ExtForceFile']=os.path.basename(old_bc_fn)
+
 # Load the grid now -- it's used for clarifying some inputs, but
 # is also modified to deepen areas near inflows, before being written
 # out near the end of the script
 grid=dfm_grid.DFMGrid(net_file)
     
-## 
-
-# WIND
-sfb_dfm_utils.add_erddap_ludwig_wind(run_base_dir,
-                                     run_start,run_stop,
-                                     old_bc_fn)
-                                         
 ##
 
 # features which have manually set locations for this grid
@@ -127,7 +142,6 @@ sfb_dfm_utils.add_sfbay_freshwater(run_base_dir,
                                    all_flows_unit=ALL_FLOWS_UNIT)
                      
 ##
-
 
 # POTW inputs:
 # The new-style boundary inputs file (FlowFM_bnd_new.ext) cannot represent
@@ -153,20 +167,22 @@ sfb_dfm_utils.add_delta_inflow(run_base_dir,
                                all_flows_unit=ALL_FLOWS_UNIT)
 ##
 
-#raise Exception("Depending on success with LSB run, should add factor=0.901 here")
+
+# This factor seems to be about right for Point Reyes tides
+# to show up at SF with the right amplitude.  Without
+# attenuation, in runs/w2013b tides at SF are 1.10x observed.
+# The lag is a bit less clear, with SF tides at -2.5 minutes (leading),
+# but SF currents at about -15 minutes (leading).  All of these
+# are likely wrapped up in some friction calibration, for another
+# day.
 sfb_dfm_utils.add_ocean(run_base_dir,
                         run_start,run_stop,ref_date,
                         static_dir=abs_static_dir,
                         grid=grid,
+                        factor=0.901,lag_seconds=120,
                         old_bc_fn=old_bc_fn,
                         all_flows_unit=ALL_FLOWS_UNIT)
 
-##
-
-sfb_dfm_utils.add_initial_salinity(run_base_dir,
-                                   static_dir=abs_static_dir,
-                                   old_bc_fn=old_bc_fn,
-                                   all_flows_unit=ALL_FLOWS_UNIT)
 ## 
 if 1:            
     lines=["QUANTITY=frictioncoefficient",
@@ -178,35 +194,29 @@ if 1:
     with open(old_bc_fn,'at') as fp:
         fp.write("\n".join(lines))
 
-## --------------------------------------------------------------------------------
-# Edits to the template mdu:
-# 
-
-mdu=dio.MDUFile('template.mdu')
-
-mdu['geometry','LandBoundaryFile'] = os.path.join(rel_static_dir,"deltabay.ldb")
-
 if 1:  # Copy grid file into run directory and update mdu
     mdu['geometry','NetFile'] = os.path.basename(net_file)
-    dest=os.path.join(run_base_dir, net_file)
-    if 0: # back when this script made no changes to the grid:
-        shutil.copyfile(net_file, dest)
-    else: # write out the modified grid
-        dfm_grid.write_dfm(grid,dest,overwrite=True)
+    dest=os.path.join(run_base_dir, mdu['geometry','NetFile'])
+    # write out the modified grid
+    dfm_grid.write_dfm(grid,dest,overwrite=True)
+
+
+sfb_dfm_utils.add_initial_salinity_dyn(run_base_dir,
+                                       abs_static_dir,
+                                       mdu,
+                                       run_start)
+
+
+# WIND
+ludwig_ok=sfb_dfm_utils.add_erddap_ludwig_wind(run_base_dir,
+                                               run_start,run_stop,
+                                               old_bc_fn)
+assert ludwig_ok # or see lsb_dfm.py for constant field.
+
+##
 
 if 1: # fixed weir file is just referenced as static input
     mdu['geometry','FixedWeirFile'] = os.path.join(rel_static_dir,'SBlevees_tdk.pli')
-
-if 1: # set dates
-    # RefDate can only be specified to day precision
-    mdu['time','RefDate'] = utils.to_datetime(ref_date).strftime('%Y%m%d')
-    mdu['time','Tunit'] = 'M' # minutes.  kind of weird, but stick with what was used already
-    mdu['time','TStart'] = 0
-    mdu['time','TStop'] = int( (run_stop - run_start) / np.timedelta64(1,'m') )
-
-if 1: # update location of the boundary conditions
-    # this has the source/sinks which cannot be written in the new style file
-    mdu['external forcing','ExtForceFile']=os.path.basename(old_bc_fn)
 
 if 0: # Would be adding evaporation as negative rain here.
     pass
@@ -233,6 +243,7 @@ if 1:
 mdu_fn=os.path.join(run_base_dir,run_name+".mdu")
 mdu.write(mdu_fn)
 
+##
 
 # As of r52184, explicitly built with metis support, partitioning can be done automatically
 # from here.
