@@ -51,7 +51,9 @@ if 0: # hopefully fixing Delta inflows
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2013-10-01')
 if 1: # try attenuating/lagging ocean boundary condition
-    # suffix:
+    # initial run had bug in salt i.c., ocean b.c., and appeared
+    # to have too much evaporation in the south.  re-doing that
+    # run with fixes in place, and 50% of the evaporation.
     run_name="wy2013c" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2013-10-01')
@@ -98,8 +100,6 @@ os.path.exists(run_base_dir) or os.makedirs(run_base_dir)
 # clear any stale bc files:
 for fn in [old_bc_fn]:
     os.path.exists(fn) and os.unlink(fn)
-
-##
 
 ## --------------------------------------------------------------------------------
 # Edits to the template mdu:
@@ -218,8 +218,10 @@ assert ludwig_ok # or see lsb_dfm.py for constant field.
 if 1: # fixed weir file is just referenced as static input
     mdu['geometry','FixedWeirFile'] = os.path.join(rel_static_dir,'SBlevees_tdk.pli')
 
-if 0: # Would be adding evaporation as negative rain here.
-    pass
+if 1: 
+    # evaporation was a bit out of control in south bay - try scaling back just
+    # the evaporation some.  This is a punt!
+    sfb_dfm_utils.add_cimis_evap_precip(run_base_dir,mdu,scale_evap=0.5)
 
 if 1: # output locations
     mdu['output','CrsFile'] = os.path.join(rel_static_dir,"SB-observationcrosssection.pli")
