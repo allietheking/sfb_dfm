@@ -50,13 +50,19 @@ if 0: # hopefully fixing Delta inflows
     run_name="wy2013b" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2013-10-01')
-if 1: # try attenuating/lagging ocean boundary condition
+if 0: # try attenuating/lagging ocean boundary condition
     # initial run had bug in salt i.c., ocean b.c., and appeared
     # to have too much evaporation in the south.  re-doing that
     # run with fixes in place, and 50% of the evaporation.
+    # This run is the basis for the Interim Model Validation Report
     run_name="wy2013c" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2013-10-01')
+
+if 1: # tweaks, debug salt IC
+    run_name="wy2013d" 
+    run_start=np.datetime64('2012-08-01')
+    run_stop=np.datetime64('2012-08-05')
 
 nprocs=16
 ALL_FLOWS_UNIT=False # for debug, set all volumetric flow rates to 1m3/s if True
