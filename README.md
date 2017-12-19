@@ -8,27 +8,22 @@ Configuration for San Francisco Bay hydrodynamic model:
 ## Files
 
 **derived**
-
   Data/files derived from other inputs, but not part of a specific run.
   Currently only used for shapefiles generated from the grid.
   
 **inputs-static**
-
   Files which do not change across runs, are not derived, but are instead
   referenced directly from the MDU or other parts of the model setup.
   
 **nudged_features.pli**
-
   A Delft-style polyline file defining locations of sources.  This is created
   by exporting boundary condition features from Delta Shell.
   
 **write_grid_shp.py**
-
   Short script which writes the shapefile for grid edges, used for loading
   grid representation into GIS.
   
 **runs**
-
   Script-generated simulation setups are in subdirectories below here.
   
 **sample_run_dfm**
