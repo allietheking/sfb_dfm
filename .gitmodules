@@ -4,6 +4,9 @@
 [submodule "sfbay_freshwater"]
 	path = sfbay_freshwater
 	url = ssh://git@stash.sfei.org:7999/nm/sfbay_freshwater.git
+	branch = master
 [submodule "sfb_dfm_utils"]
 	path = sfb_dfm_utils
 	url = ssh://git@stash.sfei.org:7999/nm/sfb_dfm_utils.git
+[submodule "sfbay_dfm_utils"]
+	branch = master
