@@ -21,3 +21,6 @@ cell_depth=g.interp_node_to_cell(g.nodes['depth'])
 g.write_cells_shp('derived/grid-cells.shp',
                   extra_fields=[ ('depth',cell_depth) ])
 
+##
+
+g.write_shore_shp('derived/grid-boundary.shp')
