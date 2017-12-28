@@ -47,3 +47,45 @@ Configuration for San Francisco Bay hydrodynamic model:
 **update_alviso_bathy.py, plot_sources.py**
   Temporary dev-related scripts for troubleshooting some issues.  Probably
   will be removed down the road.
+
+## Running the Model
+
+1. Clone this repository and submodules:
+
+    ```$ git clone --recursive https://github.com/rustychris/sfb_dfm.git```
+
+2. Clone `stompy` if you do not already have it
+
+    ```$ git clone https://github.com/rustychris/stompy.git ; export PYTHONPATH=$PWD/stompy```
+    
+3. Edit sfb_dfm/sfb_dfm.py:
+  a. In the second block ('SETTINGS') from the top, set `run_name`, `run_start`, and `run_stop`.
+  b. Set `dfm_bin_dir` to point to the folder holding `dflowfm`.  If MPI is installed elsewhere, modify `mpi_bin_dir`, too.
+  c. Set `nprocs` to the number of cores to use for MPI.  Currently this script assumes that MPI is used.
+  
+4. Run sfb_dfm.py from the sfb_dfm directory:
+
+    ```
+    $ python sfb_dfm.py
+    ```
+    
+5. Manually run the simulation:
+
+     ```
+     $ cd runs/<run_name>
+     $ mpiexec -np <nprocs> dflowfm --autostartstop <run_name>
+     ```
+  
+5. If all goes well, you should end up with a complete run in runs/<run_name>.
+
+### What does the script do?
+
+* Adds freshwater flows to the model, making sure that the pour points are deep enough (-0.5m) to remain wet at all times.
+* Adds POTW flows as point sources at the bed.
+* Download tide and Delta outflow data, applying these as additional boundary conditions.
+* Download a coarse wind field, add as boundary condition.
+* Update settings in template.mdu to customize paths, time information, output selection.
+* Partition the grid and scatter the MDUs.
+
+
+ 
