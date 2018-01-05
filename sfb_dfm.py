@@ -2,10 +2,14 @@
 """
 Script to configure and generate mdu ready for running dflow fm.
 
-Uses sfei_v19 grid, a Southbay-enhancement of the SF Bay/Delta community
+
+Uses sfei_v20 grid, a Southbay-enhancement of the SF Bay/Delta community
 model grid, with some areas deepened (LSB bathy), trimmed (Coyote Creek)
-and dredge (see dredge_grid.py in this directory)
+and dredge (see dredge_grid.py in this directory).
+
+2018-01-05: fix some corrupt bathymetry in Napa- see update_bathy_to_v20.py
 """
+
 import os
 import glob
 import pdb
@@ -89,7 +93,7 @@ rel_static_dir=os.path.relpath(abs_static_dir,
 # truncate to day precision (rounds down)
 ref_date=run_start.astype('datetime64[D]')
 
-net_file = os.path.join(base_dir,'sfei_v19_net.nc')
+net_file = os.path.join(base_dir,'sfei_v20_net.nc')
 
 # No longer using any new-style boundary conditions
 old_bc_fn = os.path.join(run_base_dir,'FlowFMold_bnd.ext')
