@@ -32,7 +32,7 @@ if __name__=='__main__':
 
 log=logging.getLogger('sfb_dfm')
 
-import sfb_dfm_utils 
+import sfb_dfm_utils
 
 DAY=np.timedelta64(86400,'s') # useful for adjusting times
 
@@ -43,6 +43,10 @@ if 0: # nice short setup for testing:
     run_name="test_20120801_p16" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2012-08-05')
+if 1: # short large core run to test HPC1
+    run_name="test_20120801_p64" 
+    run_start=np.datetime64('2012-08-01')
+    run_stop=np.datetime64('2012-08-31')
 if 0: # wy2013 with spinup
     # suffix:
     #   a=>lowpassed the tides
@@ -62,16 +66,16 @@ if 0: # try attenuating/lagging ocean boundary condition
     run_name="wy2013c" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2013-10-01')
-
-if 1: # tweaks, debug salt IC
+if 0: # tweaks, debug salt IC
     run_name="wy2013d" 
     run_start=np.datetime64('2012-08-01')
     run_stop=np.datetime64('2012-08-05')
 
-nprocs=16
+nprocs=64
 ALL_FLOWS_UNIT=False # for debug, set all volumetric flow rates to 1m3/s if True
 
-dfm_bin_dir="/opt/software/delft/dfm/r52184-opt/bin"
+dfm_bin_dir="/home/rustyh/src/dfm/r53925-opt/bin"
+mpi_bin_dir=dfm_bin_dir # symlinked to the real thing
 
 ## --------------------------------------------------
 
@@ -116,13 +120,12 @@ for fn in [old_bc_fn]:
 # 
 
 mdu=dio.MDUFile('template.mdu')
+mdu.set_filename(os.path.join(run_base_dir,"FlowFM.mdu"))
+mdu.set_time_range(run_start,run_stop) # ref date automatically set to start.
 
-if 1: # set dates
-    # RefDate can only be specified to day precision
-    mdu['time','RefDate'] = utils.to_datetime(ref_date).strftime('%Y%m%d')
-    mdu['time','Tunit'] = 'M' # minutes.  kind of weird, but stick with what was used already
-    mdu['time','TStart'] = 0
-    mdu['time','TStop'] = int( (run_stop - run_start) / np.timedelta64(1,'m') )
+# For recent (after revision 53000?) dflowfm, tim files for discharge_salinity_temperature_sorsin
+# must have exactly the constituents which are enabled.
+mdu.flags['sorsin_omit_unused_scalars']=True
 
 mdu['geometry','LandBoundaryFile'] = os.path.join(rel_static_dir,"deltabay.ldb")
 
@@ -142,14 +145,11 @@ grid=dfm_grid.DFMGrid(net_file)
 # features which have manually set locations for this grid
 adjusted_pli_fn = os.path.join(base_dir,'nudged_features.pli')
 
-sfb_dfm_utils.add_sfbay_freshwater(run_base_dir,
-                                   run_start,run_stop,ref_date,
+sfb_dfm_utils.add_sfbay_freshwater(mdu,
                                    adjusted_pli_fn,
                                    freshwater_dir=os.path.join(base_dir, 'sfbay_freshwater'),
                                    grid=grid,
-                                   dredge_depth=dredge_depth,
-                                   old_bc_fn=old_bc_fn,
-                                   all_flows_unit=ALL_FLOWS_UNIT)
+                                   dredge_depth=dredge_depth)
                      
 ##
 
@@ -158,13 +158,8 @@ sfb_dfm_utils.add_sfbay_freshwater(run_base_dir,
 # sources and sinks, so these come in via the old-style file.
 potw_dir=os.path.join(base_dir,'sfbay_potw')
 
-sfb_dfm_utils.add_sfbay_potw(run_base_dir,
-                             run_start,run_stop,ref_date,
-                             potw_dir,
-                             adjusted_pli_fn,
-                             grid,dredge_depth,
-                             old_bc_fn,
-                             all_flows_unit=ALL_FLOWS_UNIT)
+sfb_dfm_utils.add_sfbay_potw(mdu,potw_dir,adjusted_pli_fn,
+                             grid,dredge_depth)
 
 ##
 
@@ -252,15 +247,14 @@ if 1:
         mdu['output','MapInterval'] = 3600
     
 ##
-mdu_fn=os.path.join(run_base_dir,run_name+".mdu")
-mdu.write(mdu_fn)
+mdu.write()
 
 ##
 
 # As of r52184, explicitly built with metis support, partitioning can be done automatically
 # from here.
 
-cmd="%s/mpiexec -n %d %s/dflowfm --partition:ndomains=%d %s"%(dfm_bin_dir,nprocs,dfm_bin_dir,nprocs,
+cmd="%s/mpiexec -n %d %s/dflowfm --partition:ndomains=%d %s"%(mpi_bin_dir,nprocs,dfm_bin_dir,nprocs,
                                                               mdu['geometry','NetFile'])
 pwd=os.getcwd()
 try:
@@ -271,7 +265,7 @@ finally:
 
 
 # similar, but for the mdu:
-cmd="%s/generate_parallel_mdu.sh %s %d 6"%(dfm_bin_dir,os.path.basename(mdu_fn),nprocs)
+cmd="%s/generate_parallel_mdu.sh %s %d 6"%(dfm_bin_dir,os.path.basename(mdu.filename),nprocs)
 try:
     os.chdir(run_base_dir)
     res=subprocess.call(cmd,shell=True)
