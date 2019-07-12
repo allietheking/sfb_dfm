@@ -1,10 +1,3 @@
-[submodule "sfbay_potw"]
-	path = sfbay_potw
-	url = https://github.com/rustychris/sfbay_potw.git
-[submodule "sfbay_freshwater"]
-	path = sfbay_freshwater
-	url = https://github.com/rustychris/sfbay_freshwater.git
-	branch = master
 [submodule "sfb_dfm_utils"]
 	path = sfb_dfm_utils
 	url = https://github.com/rustychris/sfb_dfm_utils.git 
