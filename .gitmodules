@@ -2,3 +2,9 @@
 	path = sfb_dfm_utils
 	url = https://github.com/rustychris/sfb_dfm_utils.git 
         branch = master
+[submodule "sfbay_freshwater"]
+	path = sfbay_freshwater
+	url = https://github.com/emmashie/sfbay_freshwater
+[submodule "sfbay_potw"]
+	path = sfbay_potw
+	url = https://github.com/emmashie/sfbay_potw
