@@ -39,34 +39,15 @@ DAY=np.timedelta64(86400,'s') # useful for adjusting times
 ## --------------------------------------------------
 
 # Parameters to control more specific aspects of the run
-if 0: # nice short setup for testing:
-    run_name="test_20120801_p16" 
-    run_start=np.datetime64('2012-08-01')
-    run_stop=np.datetime64('2012-08-05')
-if 0: # wy2013 with spinup
-    # suffix:
-    #   a=>lowpassed the tides
-    run_name="wy2013a" 
-    run_start=np.datetime64('2012-08-01')
-    run_stop=np.datetime64('2013-10-01')
-if 0: # hopefully fixing Delta inflows
-    # suffix:
-    run_name="wy2013b" 
-    run_start=np.datetime64('2012-08-01')
-    run_stop=np.datetime64('2013-10-01')
-if 0: # try attenuating/lagging ocean boundary condition
-    # initial run had bug in salt i.c., ocean b.c., and appeared
-    # to have too much evaporation in the south.  re-doing that
-    # run with fixes in place, and 50% of the evaporation.
-    # This run is the basis for the Interim Model Validation Report
-    run_name="wy2013c" 
-    run_start=np.datetime64('2012-08-01')
-    run_stop=np.datetime64('2013-10-01')
+if 0: 
+    run_name="test" 
+    run_start=np.datetime64('2016-08-01')
+    run_stop=np.datetime64('2017-10-01')
+if 1:
+    run_name="wy2003"
+    run_start=np.datetime64('2002-08-01')
+    run_stop=np.datetime64('2003-04-01')
 
-if 1: # tweaks, debug salt IC
-    run_name="wy2013d" 
-    run_start=np.datetime64('2012-08-01')
-    run_stop=np.datetime64('2012-08-05')
 
 nprocs=16
 ALL_FLOWS_UNIT=False # for debug, set all volumetric flow rates to 1m3/s if True
@@ -138,11 +119,13 @@ mdu['external forcing','ExtForceFile']=os.path.basename(old_bc_fn)
 grid=dfm_grid.DFMGrid(net_file)
     
 ##
+bc_dir = os.path.join(run_base_dir, 'bc_files')
+os.path.exists(bc_dir) or os.makedirs(bc_dir)
 
 # features which have manually set locations for this grid
 adjusted_pli_fn = os.path.join(base_dir,'nudged_features.pli')
 
-sfb_dfm_utils.add_sfbay_freshwater(run_base_dir,
+sfb_dfm_utils.add_sfbay_freshwater(bc_dir,
                                    run_start,run_stop,ref_date,
                                    adjusted_pli_fn,
                                    freshwater_dir=os.path.join(base_dir, 'sfbay_freshwater'),
@@ -156,9 +139,12 @@ sfb_dfm_utils.add_sfbay_freshwater(run_base_dir,
 # POTW inputs:
 # The new-style boundary inputs file (FlowFM_bnd_new.ext) cannot represent
 # sources and sinks, so these come in via the old-style file.
+src_dir = os.path.join(run_base_dir, 'source_files')
+os.path.exists(src_dir) or os.makedirs(src_dir)
+
 potw_dir=os.path.join(base_dir,'sfbay_potw')
 
-sfb_dfm_utils.add_sfbay_potw(run_base_dir,
+sfb_dfm_utils.add_sfbay_potw(src_dir,
                              run_start,run_stop,ref_date,
                              potw_dir,
                              adjusted_pli_fn,
@@ -167,14 +153,17 @@ sfb_dfm_utils.add_sfbay_potw(run_base_dir,
                              all_flows_unit=ALL_FLOWS_UNIT)
 
 ##
-
+temp_jersey = run_start>np.datetime64('2009-12-01')<run_stop<np.datetime64('2016-11-01')
+temp_rio = run_start>np.datetime64('2010-01-01')<run_stop<np.datetime64('2020-01-20')
 # Delta boundary conditions
-sfb_dfm_utils.add_delta_inflow(run_base_dir,
+sfb_dfm_utils.add_delta_inflow(bc_dir,
                                run_start,run_stop,ref_date,
                                static_dir=abs_static_dir,
                                grid=grid,dredge_depth=dredge_depth,
                                old_bc_fn=old_bc_fn,
-                               all_flows_unit=ALL_FLOWS_UNIT)
+                               all_flows_unit=ALL_FLOWS_UNIT,
+                               temp_jersey=temp_jersey,
+                               temp_rio=temp_rio)
 ##
 
 
@@ -185,7 +174,7 @@ sfb_dfm_utils.add_delta_inflow(run_base_dir,
 # but SF currents at about -15 minutes (leading).  All of these
 # are likely wrapped up in some friction calibration, for another
 # day.
-sfb_dfm_utils.add_ocean(run_base_dir,
+sfb_dfm_utils.add_ocean(bc_dir,
                         run_start,run_stop,ref_date,
                         static_dir=abs_static_dir,
                         grid=grid,
@@ -221,7 +210,11 @@ sfb_dfm_utils.add_initial_salinity_dyn(run_base_dir,
 ludwig_ok=sfb_dfm_utils.add_erddap_ludwig_wind(run_base_dir,
                                                run_start,run_stop,
                                                old_bc_fn)
-assert ludwig_ok # or see lsb_dfm.py for constant field.
+if not ludwig_ok:
+    const_ok=sfb_dfm_utils.add_constant_wind(run_base_dir,mdu,[0,0],run_start,run_stop)
+    assert const_ok
+else:
+    assert ludwig_ok # or see lsb_dfm.py for constant field.
 
 ##
 
