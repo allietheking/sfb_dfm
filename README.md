@@ -9,7 +9,7 @@ Configuration for San Francisco Bay hydrodynamic model:
 
 1. Clone this repository and submodules:
 
-    ```$ git clone --recursive https://github.com/rustychris/sfb_dfm.git```
+    ```$ git clone --recursive https://github.com/emmashie/sfb_dfm.git```
 
 2. Clone `stompy` if you do not already have it
 
