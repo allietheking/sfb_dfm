@@ -4,7 +4,7 @@
         branch = master
 [submodule "sfbay_freshwater"]
 	path = sfbay_freshwater
-	url = https://github.com/emmashie/sfbay_freshwater
+	url = https://github.com/emmashie/sfbay_freshwater.git
 [submodule "sfbay_potw"]
 	path = sfbay_potw
 	url = https://github.com/emmashie/sfbay_potw
