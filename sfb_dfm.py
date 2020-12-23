@@ -39,11 +39,11 @@ DAY=np.timedelta64(86400,'s') # useful for adjusting times
 ## --------------------------------------------------
 
 # Parameters to control more specific aspects of the run
-if 0: 
+if 1: 
     run_name="test" 
     run_start=np.datetime64('2016-08-01')
-    run_stop=np.datetime64('2017-10-01')
-if 1:
+    run_stop=np.datetime64('2016-08-02')
+if 0:
     run_name="wy2003"
     run_start=np.datetime64('2002-08-01')
     run_stop=np.datetime64('2003-04-01')
@@ -98,6 +98,9 @@ for fn in [old_bc_fn]:
 
 mdu=dio.MDUFile('template.mdu')
 
+# set run base path
+mdu.base_path = run_base_dir
+
 if 1: # set dates
     # RefDate can only be specified to day precision
     mdu['time','RefDate'] = utils.to_datetime(ref_date).strftime('%Y%m%d')
@@ -118,41 +121,70 @@ mdu['external forcing','ExtForceFile']=os.path.basename(old_bc_fn)
 # out near the end of the script
 grid=dfm_grid.DFMGrid(net_file)
     
-##
-bc_dir = os.path.join(run_base_dir, 'bc_files')
-os.path.exists(bc_dir) or os.makedirs(bc_dir)
+## split into relative and absolute directories (alliek Dec 2020)
+rel_bc_dir = 'bc_files'
+abs_bc_dir = os.path.join(run_base_dir, rel_bc_dir)
+os.path.exists(abs_bc_dir) or os.makedirs(abs_bc_dir)
 
 # features which have manually set locations for this grid
 adjusted_pli_fn = os.path.join(base_dir,'nudged_features.pli')
 
-sfb_dfm_utils.add_sfbay_freshwater(bc_dir,
-                                   run_start,run_stop,ref_date,
-                                   adjusted_pli_fn,
-                                   freshwater_dir=os.path.join(base_dir, 'sfbay_freshwater'),
-                                   grid=grid,
-                                   dredge_depth=dredge_depth,
-                                   old_bc_fn=old_bc_fn,
-                                   all_flows_unit=ALL_FLOWS_UNIT)
-                     
+# this line worked in emma's repo that she left on hpc because, but since she cloned rusty's 
+# sfb_dfm_repo he made updates to add_sfbay_freshwater, so changing to work with rusty's updated 
+# sfb_dfm_utils (alliek dec 2020)
+#sfb_dfm_utils.add_sfbay_freshwater(bc_dir,
+#                                   run_start,run_stop,ref_date,
+#                                   adjusted_pli_fn,
+#                                   freshwater_dir=os.path.join(base_dir, 'sfbay_freshwater'),
+#                                   grid=grid,
+#                                   dredge_depth=dredge_depth,
+#                                   old_bc_fn=old_bc_fn,
+#                                   all_flows_unit=ALL_FLOWS_UNIT)          
+sfb_dfm_utils.add_sfbay_freshwater(mdu,
+                         rel_bc_dir, # added rel_bc_dir alliek dec 2020
+                         adjusted_pli_fn,
+                         freshwater_dir=os.path.join(base_dir, 'sfbay_freshwater'),
+                         grid=grid,dredge_depth=dredge_depth,
+                         all_flows_unit=ALL_FLOWS_UNIT,
+                         time_offset=None)
 ##
 
 # POTW inputs:
 # The new-style boundary inputs file (FlowFM_bnd_new.ext) cannot represent
 # sources and sinks, so these come in via the old-style file.
-src_dir = os.path.join(run_base_dir, 'source_files')
+
+## split into relative and absolute directories (alliek Dec 2020)
+rel_src_dir = 'source_files'
+src_dir = os.path.join(run_base_dir, rel_src_dir)
 os.path.exists(src_dir) or os.makedirs(src_dir)
 
+# path to potw repository
 potw_dir=os.path.join(base_dir,'sfbay_potw')
 
-sfb_dfm_utils.add_sfbay_potw(src_dir,
-                             run_start,run_stop,ref_date,
-                             potw_dir,
-                             adjusted_pli_fn,
-                             grid,dredge_depth,
-                             old_bc_fn,
-                             all_flows_unit=ALL_FLOWS_UNIT)
+
+# this line worked in emma's hpc repo but rusty made updates since then, so changing to 
+# work with rusty's updated sfb_dfm_utils
+#sfb_dfm_utils.add_sfbay_potw(src_dir,
+#                             run_start,run_stop,ref_date,
+#                             potw_dir,
+#                             adjusted_pli_fn,
+#                             grid,dredge_depth,
+#                             old_bc_fn,
+#                             all_flows_unit=ALL_FLOWS_UNIT)
+sfb_dfm_utils.add_sfbay_potw(mdu, 
+                             rel_src_dir, # added rel_src_dir alliek dec 2020
+                             potw_dir, 
+                             adjusted_pli_fn, 
+                             grid,dredge_depth, 
+                             all_flows_unit=ALL_FLOWS_UNIT, 
+                             time_offset=None, 
+                             write_salt=True, 
+                             write_temp=True)
 
 ##
+# not sure but I beleive the following logical indices help to deal with missing temperature
+# data at jersey point after 1/11/2016. this is from changes emma made to delta_inflows.py in
+# sfb_dfm_utils
 temp_jersey = run_start>np.datetime64('2009-12-01')<run_stop<np.datetime64('2016-11-01')
 temp_rio = run_start>np.datetime64('2010-01-01')<run_stop<np.datetime64('2020-01-20')
 # Delta boundary conditions
@@ -200,10 +232,15 @@ if 1:  # Copy grid file into run directory and update mdu
     dfm_grid.write_dfm(grid,dest,overwrite=True)
 
 
-sfb_dfm_utils.add_initial_salinity_dyn(run_base_dir,
-                                       abs_static_dir,
-                                       mdu,
-                                       run_start)
+# update to work with rusty's changes to sfb_dfm_utils
+#sfb_dfm_utils.add_initial_salinity_dyn(run_base_dir,
+#                                       abs_static_dir,
+#                                       mdu,
+#                                       run_start)
+sfb_dfm_utils.add_initial_salinity(run_base_dir,
+                                   abs_static_dir,
+                                   old_bc_fn,
+                                   all_flows_unit=ALL_FLOWS_UNIT)
 
 
 # WIND
@@ -224,8 +261,11 @@ if 1: # fixed weir file is just referenced as static input
 if 1: 
     # evaporation was a bit out of control in south bay - try scaling back just
     # the evaporation some.  This is a punt!
-    sfb_dfm_utils.add_cimis_evap_precip(run_base_dir,mdu,scale_evap=0.5)
-
+    
+    # update to work with rusty's updates to sfb_dfm_utils (added scale_precip)
+    #sfb_dfm_utils.add_cimis_evap_precip(run_base_dir,mdu,scale_evap=0.5)
+    sfb_dfm_utils.add_cimis_evap_precip(run_base_dir, mdu, scale_precip=1.0, scale_evap=0.5)
+    
 if 1: # output locations
     mdu['output','CrsFile'] = os.path.join(rel_static_dir,"SB-observationcrosssection.pli")
 
@@ -250,23 +290,23 @@ mdu.write(mdu_fn)
 
 ##
 
-# As of r52184, explicitly built with metis support, partitioning can be done automatically
-# from here.
-
-cmd="%s/mpiexec -n %d %s/dflowfm --partition:ndomains=%d %s"%(dfm_bin_dir,nprocs,dfm_bin_dir,nprocs,
-                                                              mdu['geometry','NetFile'])
-pwd=os.getcwd()
-try:
-    os.chdir(run_base_dir)
-    res=subprocess.call(cmd,shell=True)
-finally:
-    os.chdir(pwd)
-
-
-# similar, but for the mdu:
-cmd="%s/generate_parallel_mdu.sh %s %d 6"%(dfm_bin_dir,os.path.basename(mdu_fn),nprocs)
-try:
-    os.chdir(run_base_dir)
-    res=subprocess.call(cmd,shell=True)
-finally:
-    os.chdir(pwd)
+## As of r52184, explicitly built with metis support, partitioning can be done automatically
+## from here.
+#
+#cmd="%s/mpiexec -n %d %s/dflowfm --partition:ndomains=%d %s"%(dfm_bin_dir,nprocs,dfm_bin_dir,nprocs,
+#                                                              mdu['geometry','NetFile'])
+#pwd=os.getcwd()
+#try:
+#    os.chdir(run_base_dir)
+#    res=subprocess.call(cmd,shell=True)
+#finally:
+#    os.chdir(pwd)
+#
+#
+## similar, but for the mdu:
+#cmd="%s/generate_parallel_mdu.sh %s %d 6"%(dfm_bin_dir,os.path.basename(mdu_fn),nprocs)
+#try:
+#    os.chdir(run_base_dir)
+#    res=subprocess.call(cmd,shell=True)
+#finally:
+#    os.chdir(pwd)
