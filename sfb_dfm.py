@@ -207,7 +207,7 @@ sfb_dfm_utils.add_delta_inflow(mdu,
 # but SF currents at about -15 minutes (leading).  All of these
 # are likely wrapped up in some friction calibration, for another
 # day.
-sfb_dfm_utils.add_ocean(bc_dir,
+sfb_dfm_utils.add_ocean(run_base_dir,rel_bc_dir,
                         run_start,run_stop,ref_date,
                         static_dir=abs_static_dir,
                         grid=grid,
