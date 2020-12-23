@@ -188,11 +188,12 @@ sfb_dfm_utils.add_sfbay_potw(mdu,
 temp_jersey = run_start>np.datetime64('2009-12-01')<run_stop<np.datetime64('2016-11-01')
 temp_rio = run_start>np.datetime64('2010-01-01')<run_stop<np.datetime64('2020-01-20')
 # Delta boundary conditions
-sfb_dfm_utils.add_delta_inflow(bc_dir,
-                               run_start,run_stop,ref_date,
+# saved over rusty's delta_inflow.py with emma's version but then changed to be more like rusty's 
+# for better handling of boundary condition directory
+sfb_dfm_utils.add_delta_inflow(mdu,
+                               rel_bc_dir,
                                static_dir=abs_static_dir,
                                grid=grid,dredge_depth=dredge_depth,
-                               old_bc_fn=old_bc_fn,
                                all_flows_unit=ALL_FLOWS_UNIT,
                                temp_jersey=temp_jersey,
                                temp_rio=temp_rio)
@@ -244,14 +245,14 @@ sfb_dfm_utils.add_initial_salinity(run_base_dir,
 
 
 # WIND
-ludwig_ok=sfb_dfm_utils.add_erddap_ludwig_wind(run_base_dir,
-                                               run_start,run_stop,
-                                               old_bc_fn)
-if not ludwig_ok:
-    const_ok=sfb_dfm_utils.add_constant_wind(run_base_dir,mdu,[0,0],run_start,run_stop)
-    assert const_ok
-else:
-    assert ludwig_ok # or see lsb_dfm.py for constant field.
+#ludwig_ok=sfb_dfm_utils.add_erddap_ludwig_wind(run_base_dir,
+#                                               run_start,run_stop,
+#                                               old_bc_fn)
+#if not ludwig_ok:
+#    const_ok=sfb_dfm_utils.add_constant_wind(run_base_dir,mdu,[0,0],run_start,run_stop)
+#    assert const_ok
+#else:
+#    assert ludwig_ok # or see lsb_dfm.py for constant field.
 
 ##
 
