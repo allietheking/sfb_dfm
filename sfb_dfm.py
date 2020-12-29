@@ -48,11 +48,7 @@ if 0:
     run_start=np.datetime64('2002-08-01')
     run_stop=np.datetime64('2003-04-01')
 
-
-nprocs=16
 ALL_FLOWS_UNIT=False # for debug, set all volumetric flow rates to 1m3/s if True
-
-dfm_bin_dir="/opt/software/delft/dfm/r52184-opt/bin"
 
 ## --------------------------------------------------
 
